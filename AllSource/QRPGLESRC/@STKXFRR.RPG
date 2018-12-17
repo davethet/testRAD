@@ -1,0 +1,291 @@
+     H            D
+      *****************************************************************
+      * Program  :
+      * Author   :
+      * Date     :
+      * Based on : EXSTF01R
+      ***************************************************************
+     E                    MSG     1   3 78
+      *===============================================================*
+      * Input Specs                                                   *
+      * program status data structure                                 *
+      *===============================================================*
+     I          ESDSGENSDS
+      *
+      *===============================================================*
+      * Define Constants                                              *
+      *===============================================================*
+     I              '*** ERRORS ***'      C         C#HDR
+      *===============================================================*
+      * Parameter List For @EDTNBR                                    *
+      *===============================================================*
+     IPARMLS      DS
+     I I                                      1   1 P#EDTC
+     I I                                      2  160P#TVAR
+     I I                                     17  200P#TVLN
+     I I                                     21  240P#TVDP
+     I I                                     25  88 P#TSTR
+      *
+     IX#A05       DS                           4096
+     I                                        1   50X#RA05
+     I                                        6   7 X#CONO
+      *
+     IPFX         DS                           4096
+     I                                        1   1 PFX#1
+      *
+     IPFP         DS                           2000
+     I                                        1   1 PFP#1
+      *
+      * Define dataQ buffer positions based on P
+     IBUFR#P    E DSJ0550PP                    2000
+      *
+      * Define dataQ buffer positions based on X
+     IBUFR#X    E DSJ0550XP                    4096
+      *
+     IX         E DSJ0550XP                    4096
+     I              #XSTAT                          @XSTAT
+     I              #XMSG                           @XMSG
+      *
+      *****************************************************************
+      * Control Specs.
+      *****************************************************************
+      *
+     C                     EXSR STRPGM
+     C                     EXSR SNDMRL
+     C                     EXSR ENDPGM
+      *
+      * Exit The Program.
+     C                     MOVEL*ON       *INLR
+     C                     RETRN
+      *
+      *===============================================================*
+      * SNDMRL - SEND THE DATA TO MERLIN INTERACTIVELY                *
+      *===============================================================*
+      *
+     C           SNDMRL    BEGSR
+      *
+     C                     MOVEL'I'       #PIORB
+     C                     MOVEL'43/INP'  #PSDTA    P
+     C                     MOVEL#IFRST    #PFRST    P
+     C                     MOVEL#ITOST    #PTOST    P
+      *
+     C                     MOVEL#IITEM    #PITEM    P
+     C                     MOVE #IMQTY    #PMQTY    P
+     C                     MOVEL#ILOTN    #PLOTN    P
+      *
+     C                     MOVEL#ILF01    #PLF01    P
+     C                     MOVEL#ILT01    #PLT01    P
+     C                     MOVE #IMQTY    #PQF01    P
+     C                     MOVE #IMQTY    #PQT01    P
+     C                     MOVE #IREFN    #PREFN    P
+     C                     MOVE #IREAS    #PREAS    P
+     C                     MOVE #INARR    #PNARR    P
+      *
+     C                     EXSR SNDDTQ
+     C                     EXSR RCVDTQ
+      *                                                               *
+     C           #XSTAT    IFEQ 'ER'
+     C                     MOVEL#XMSG     ERRMSG
+     C                     CALL 'SNDMSG'
+     C                     PARM           ERRMSG
+     C                     ENDIF
+     C           #XSTAT    IFEQ 'LS'
+     C                     MOVELMSG,3     ERRMSG
+     C                     CALL 'SNDMSG'
+     C                     PARM           ERRMSG
+     C                     ENDIF
+     C           #XSTAT    IFEQ 'OK'
+     C                     MOVE *BLANKS   #IITEM
+     C                     MOVE *BLANKS   #IMQTY
+     C                     MOVE *BLANKS   #IFRST
+     C                     MOVE *BLANKS   #ITOST
+     C                     MOVE *BLANKS   #ILOTN
+     C                     MOVE *BLANKS   #ILF01
+     C                     MOVE *BLANKS   #ILT01
+     C                     MOVE *BLANKS   #IREFN
+     C                     MOVE *BLANKS   #IREAS
+     C                     MOVE *BLANKS   #INARR
+     C                     ENDIF
+      * Return status to calling program
+     C                     MOVE #XSTAT    #OSTAT
+      * CLEAR DATA QUEUE OUT JUST IN CASE!!!!!!!!!!
+      *                                                               *
+     C           #LEN      DOULT1
+     C                     CALL 'QRCVDTAQ'             51
+     C                     PARM           @RCV
+     C                     PARM 'HERMIT'  @LIB   10
+     C                     PARM           #LEN
+     C                     PARM           BUFR#X
+     C                     PARM 1         WAIT    50
+     C                     ENDDO
+      *                                                               *
+     C                     ENDSR
+      *
+      *==============================================================*
+      * STRPGM - Allocate Data Queue
+      *==============================================================*
+     C           STRPGM    BEGSR
+      *
+      * Create Storeprocedure Data Queue.
+      *
+     C                     MOVEL'A'       PFFLAG  1
+      *
+     C                     CALL 'BSCSP02C'
+     C                     PARM           PFFLAG
+     C                     PARM           PFRLIB 10
+     C                     PARM           PFRDQ  10
+      *
+      * Retain Library And Data Queue Names.
+     C                     MOVELPFRDQ     WFRDQ  10
+     C                     MOVELPFRLIB    WFRLIB 10
+      *
+     C                     MOVEL#USER     @PUSER
+      *
+      *
+      * Set Receive Data Queue.
+      *
+     C                     MOVEL*OFF      *IN49
+      *
+      *
+      * Receive Data From Storeprocedure
+      *
+     C                     MOVEL'IA'      WFCONO  2
+     C                     MOVEL*ON       *IN49
+     C                     EXSR ALLOC
+     C*
+      *
+     C                     MOVEL'J0550'   #PLABL    P
+     C                     EXSR SNDDTQ
+      *
+     C                     ENDSR
+      *
+      *==============================================================*
+      * ENDPGM - Deallocate Data Queue And Exit Program.             *
+      *==============================================================*
+     C           ENDPGM    BEGSR
+      *
+     C                     MOVEL'EXIT_PGM'#PLABL    P
+     C                     EXSR SNDDTQ
+      *
+     C                     EXSR DEALOC
+      *
+      *
+     C                     ENDSR
+      *==============================================================*
+      * RECDTA - Receive Data From SQL Storeprocedure.               *
+      *==============================================================*
+     C           RECDTA    BEGSR
+      *
+     C                     CALL 'QRCVDTAQ'
+     C                     PARM WFRDQ     PFRCV  10
+     C                     PARM WFRLIB    PFLIB  10
+     C                     PARM           PFQLEN  50
+     C                     PARM           PFX
+     C                     PARM           PFWAIT  50
+      *
+     C                     ENDSR
+      *==============================================================*
+      * ALLOC  - Allocate Data Queues.                               *
+      *==============================================================*
+     C           ALLOC     BEGSR
+      *
+      * Allocate A Data Queue For this User.
+      *
+     C                     CALL 'MRLZALCR'             88
+     C                     PARM           @PUSER 10
+     C                     PARM 'A'       ALC     1
+     C                     PARM *BLANKS   DTQ    10
+      *
+     C           DTQ       IFEQ *BLANKS
+     C                     MOVELMSG,2     ERRMSG
+     C                     CALL 'SNDMSG'
+     C                     PARM           ERRMSG255
+     C                     MOVEL*ON       *INLR
+     C                     RETRN
+     C                     ELSE
+     C           'S'       CAT  DTQ:0     @SND   10
+     C           'R'       CAT  DTQ:0     @RCV   10
+     C                     ENDIF
+      *
+     C                     ENDSR
+      *==============================================================*
+      * DEALOC - De-Allocate Data Queues.                            *
+      *==============================================================*
+     C           DEALOC    BEGSR
+      *
+      * Deallocate the data queue for this user.
+      *
+     C                     CALL 'MRLZALCR'             88
+     C                     PARM           @PUSER
+     C                     PARM 'D'       ALC     1
+     C                     PARM           DTQ    10
+     C*
+     C                     ENDSR
+      *===============================================================*
+      * S U B R O U T I N E  -  Send_To_DataQ                         *
+      *                                                               *
+      *                                                               *
+     C           SNDDTQ    BEGSR
+      *                                                               *
+     C                     MOVE 'I'       #PIORB
+      *                                                               *
+     C                     CALL 'QSNDDTAQ'             51
+     C                     PARM           @SND
+     C                     PARM 'HERMIT'  @LIB   10
+     C                     PARM 2000      #LEN    40
+     C                     PARM           BUFR#P
+      *                                                               *
+     C                     ENDSR
+      *                                                               *
+      *===============================================================*
+      * S U B R O U T I N E  -  Receive_From_DataQ                    *
+      *                                                               *
+      *                                                               *
+     C           RCVDTQ    BEGSR
+      *                                                               *
+     C                     CALL 'QRCVDTAQ'             51
+     C                     PARM           @RCV
+     C                     PARM 'HERMIT'  @LIB   10
+     C                     PARM           #LEN
+     C                     PARM           BUFR#X
+     C                     PARM -1        WAIT    50
+      *                                                               *
+     C                     ENDSR
+      *                                                               *
+      *                                                               *
+      *==============================================================*
+      * *INZSR - Initialization Subroutine                           *
+      *==============================================================*
+     C           *INZSR    BEGSR
+      *
+     C           *LIKE     DEFN #PFRST    #IFRST
+     C           *LIKE     DEFN #PTOST    #ITOST
+     C           *LIKE     DEFN #PITEM    #IITEM
+     C           *LIKE     DEFN #PLF01    #ILF01
+     C           *LIKE     DEFN #PLT01    #ILT01
+     C           *LIKE     DEFN #PREFN    #IREFN
+     C           *LIKE     DEFN #PREAS    #IREAS
+     C           *LIKE     DEFN #PNARR    #INARR
+     C           *LIKE     DEFN #XSTAT    #OSTAT
+      *
+      * Entry Parameters
+      *
+     C           *ENTRY    PLIST
+     C                     PARM           #USER  10
+     C                     PARM           #IFRST           From Stockroom
+     C                     PARM           #ITOST           To Stockroom
+     C                     PARM           #IITEM           Item code
+     C                     PARM           #IMQTY 120       Quantity
+     C                     PARM           #ILOTN 15        Lot Number
+     C                     PARM           #ILF01           From Location
+     C                     PARM           #ILT01           To Location
+     C                     PARM           #IREFN           Reference
+     C                     PARM           #IREAS           Reason Code
+     C                     PARM           #INARR           Narrative
+     C                     PARM           #OSTAT           Return Code
+      *
+     C                     ENDSR
+**
+User Not Set-Up In System 21.
+Could Not Allocate A Data Queue.
+Merlin Is Lost Please Contact IT
