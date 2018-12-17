@@ -1,7 +1,7 @@
      F@POPRNT   IF   E           K disk    rename(RPOPRNT:SPOPRNT)
      FPOPRNT    O    E           K disk
      Fdrluniqp  O    E           K disk
-
+***** *************************
      D x               S              3  0
      D z               S              3  0
      C                   read      @poprnt
